@@ -1,0 +1,3 @@
+/Users/fnushariful/CLionProjects/COP 4930/ConvexHullAlgo/cmake-build-release/CMakeFiles/rebuild_cache.dir
+/Users/fnushariful/CLionProjects/COP 4930/ConvexHullAlgo/cmake-build-release/CMakeFiles/edit_cache.dir
+/Users/fnushariful/CLionProjects/COP 4930/ConvexHullAlgo/cmake-build-release/CMakeFiles/Exam.dir
