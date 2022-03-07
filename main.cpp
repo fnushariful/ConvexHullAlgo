@@ -16,7 +16,8 @@ int main(int argc, char *argv[]) {
 //    gnuplot -p -e "plot ’a.txt’ using 1:2 with linespoints lw 3 pt 7 title
 //    ’GrahamsScan’, ’a.txt’ using 1:3 with linespoints lw 3 pt 7 title ’JarvisMarch’ "
 
-    plot();
+    //plot();
+    correctnessCheck();
 
 
 //    unsigned numberOfPoints = 10;

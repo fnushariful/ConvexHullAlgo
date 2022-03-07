@@ -10,6 +10,7 @@
 #include <CGAL/enum.h>
 #include <algorithm>
 #include <cstdio>
+#include "CGAL/convex_hull_2.h"
 
 void drawConvexHullUsingQT(const std::vector<Point> &P,
                         const std::vector<Point> &convexHullPoints,
@@ -171,11 +172,10 @@ void grahamsScan(std::vector<Point> &P, std::vector<unsigned> &idsOfConvexHullPo
         lUpper.push(P[i]);
     }
 
-    std::vector<Point> grahamsScanHull;
+    std::set<Point> grahamsScanHull;
     while( !lUpper.empty() )
     {
-        grahamsScanHull.emplace_back(lUpper.top());
-        idsOfConvexHullPoints.emplace_back(M[lUpper.top()]);
+        grahamsScanHull.insert(lUpper.top());
         lUpper.pop();
     }
 
@@ -184,7 +184,7 @@ void grahamsScan(std::vector<Point> &P, std::vector<unsigned> &idsOfConvexHullPo
     lLower.push(P[P.size()-1]);
     lLower.push(P[P.size()-2]);
 
-    for(unsigned i = P.size()-2; i>=1; i--)
+    for(int i = (int) P.size() - 3 ; i>=0; i--)
     {
         while( lLower.size() > 1 && CGAL::orientation(nextToTop(lLower),lLower.top(),P[i]) != CGAL::RIGHT_TURN )
         {
@@ -195,11 +195,19 @@ void grahamsScan(std::vector<Point> &P, std::vector<unsigned> &idsOfConvexHullPo
 
     while(!lLower.empty() )
     {
-        grahamsScanHull.emplace_back(lLower.top());
-        idsOfConvexHullPoints.emplace_back(M[lLower.top()]);
+        {
+            grahamsScanHull.insert(lLower.top());
+        }
         lLower.pop();
     }
-    //drawgrahamsScanHullUsingQT(P,grahamsScanHull,true);
+
+    std::vector<Point> vec;
+    for( auto x: grahamsScanHull )
+    {
+        idsOfConvexHullPoints.emplace_back(M[x]);
+        vec.emplace_back(x);
+    }
+//    drawConvexHullUsingQT(P,vec,true);
 }
 
 
@@ -213,7 +221,7 @@ void plot() {
     // use values n = 1K, 2K, ...., 20K, and for every value of n,
     // use 5 pointsets and take the average of 5 runtimes
 
-    //std::freopen("a.txt","w",stdout);
+    std::freopen("a.txt","w",stdout);
 
     for( unsigned i = 1; i<=20; i++ ) {
         double grahamsScanRuntime = 0.0;
@@ -224,7 +232,6 @@ void plot() {
             unsigned sizeOfSquare = 500;
             std::vector<Point> P;
             generatePointsInsideASquare(numberOfPoints, sizeOfSquare, P);
-            //generateConvexPointSetInsideASquare(numberOfPoints,sizeOfSquare,P);
 
             CGAL::Timer clock;
 
@@ -246,7 +253,7 @@ void plot() {
         std::cout<<numberOfPoints<<" "<<grahamsScanRuntime/5.0<<" "<<jarvisMarchRuntime/5.0<<std::endl;
     }
 
-    //std::freopen("b.txt","w",stdout);
+    std::freopen("b.txt","w",stdout);
 
     for( unsigned i = 1; i<=20; i++ ) {
         double grahamsScanRuntime = 0.0;
@@ -277,6 +284,95 @@ void plot() {
         }
         std::cout<<numberOfPoints<<" "<<grahamsScanRuntime/5.0<<" "<<jarvisMarchRuntime/5.0<<std::endl;
     }
+}
+
+void correctnessCheck(){
+    unsigned jarvisFails = 0, grahamFails = 0;
+    std::cout << "Checking for random points within a square..." << std::endl;
+    for(unsigned n = 1; n <= 20; ++n) {
+        std::cout << "\nn: " << n << "K, " ;
+        for (unsigned i = 0; i < 5; ++i) {
+            std::cout << " Run: " << i + 1 << " ";
+            std::vector<Point> P;
+            generatePointsInsideASquare(n * 1000, 500, P);
+            std::vector<Point> copyOfP;
+            std::unordered_set<Point> hull;
+            std::copy(P.begin(), P.end(), back_inserter(copyOfP));
+            CGAL::convex_hull_2(copyOfP.begin(), copyOfP.end(), std::inserter(hull,
+                                                                              hull.end()));
+            copyOfP.clear();
+            std::copy(P.begin(), P.end(), back_inserter(copyOfP));
+            std::vector<unsigned> idsOfConvexHullPointsForJarvis;
+            jarvisMarch(copyOfP, idsOfConvexHullPointsForJarvis);
+            if( hull.size() != idsOfConvexHullPointsForJarvis.size() )
+                jarvisFails++;
+            else {
+                for( unsigned id : idsOfConvexHullPointsForJarvis )
+                    if( hull.count(P[id]) != 1) {
+                        jarvisFails++;
+                        break;
+                    }
+            }
+            copyOfP.clear();
+            std::copy(P.begin(), P.end(), back_inserter(copyOfP));
+            std::vector<unsigned> idsOfConvexHullPointsForGraham;
+            grahamsScan(copyOfP, idsOfConvexHullPointsForGraham);
+            if( hull.size() != idsOfConvexHullPointsForGraham.size() )
+                grahamFails++;
+            else {
+                for( unsigned id : idsOfConvexHullPointsForGraham )
+                    if( hull.count(P[id]) != 1) {
+                        grahamFails++;
+                        break;
+                    }
+            }
+        }
+    }
+    std::cout << "\n\nChecking for random convex point sets within a square..." <<
+              std::endl;
+    for(unsigned n = 1; n <= 20; ++n) {
+        std::cout << "\nn: " << n << "K, " ;
+        for (unsigned i = 0; i < 5; ++i) {
+            std::cout << " Run: " << i + 1 << " ";
+            std::vector<Point> P;
+            generateConvexPointSetInsideASquare(n * 1000, 500, P);
+            std::vector<Point> copyOfP;
+            std::unordered_set<Point> hull;
+            std::copy(P.begin(), P.end(), back_inserter(copyOfP));
+            CGAL::convex_hull_2(copyOfP.begin(), copyOfP.end(), std::inserter(hull,
+                                                                              hull.end()));
+            copyOfP.clear();
+            std::copy(P.begin(), P.end(), back_inserter(copyOfP));
+            std::vector<unsigned> idsOfConvexHullPointsForJarvis;
+            jarvisMarch(copyOfP, idsOfConvexHullPointsForJarvis);
+            if( hull.size() != idsOfConvexHullPointsForJarvis.size() )
+                jarvisFails++;
+            else {
+                for( unsigned id : idsOfConvexHullPointsForJarvis )
+                    if( hull.count(P[id]) != 1) {
+                        jarvisFails++;
+                        break;
+                    }
+            }
+            copyOfP.clear();
+            std::copy(P.begin(), P.end(), back_inserter(copyOfP));
+            std::vector<unsigned> idsOfConvexHullPointsForGraham;
+            grahamsScan(copyOfP, idsOfConvexHullPointsForGraham);
+            if( hull.size() != idsOfConvexHullPointsForGraham.size() )
+                grahamFails++;
+            else {
+                for( unsigned id : idsOfConvexHullPointsForGraham )
+                    if( hull.count(P[id]) != 1) {
+                        grahamFails++;
+                        break;
+                    }
+            }
+        }
+    }
+    std::cout << "\n\nNumber of times Jarvis March has failed: " << jarvisFails <<
+              std::endl;
+    std::cout << "Number of times Graham's Scan has failed: " << grahamFails <<
+              std::endl;
 }
 
 #endif //CODE_CONVEXHULLALGORITHMS_H
